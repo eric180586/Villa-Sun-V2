@@ -1,17 +1,15 @@
-// z.B. src/pages/Login.tsx (oder entsprechende Datei)
 import { useEffect, useState } from 'react';
 import type { Employee } from '@/types/employee';
 import { listEmployeesActive } from '@/lib/employees';
 import { setCurrentEmployee } from '@/lib/session';
-// ggf. deinen Router importieren
-// import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/supabase'; // vorhandener Client
 
 export default function Login() {
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [error, setError] = useState<string | null>(null);
-  // const navigate = useNavigate();
 
+  // Mitarbeiterliste aus Supabase holen (statt LocalStorage)
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -22,46 +20,83 @@ export default function Login() {
         setEmployees(list);
       } catch (e: any) {
         if (!alive) return;
-        setError(e.message ?? String(e));
+        setError(e?.message ?? String(e));
       } finally {
         if (alive) setLoading(false);
       }
     })();
-    return () => { alive = false; };
+
+    // Optional: Realtime-Updates (Liste aktualisiert sich sofort auf allen Geräten)
+    const channel = supabase
+      .channel('employees-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'employees' },
+        async () => {
+          try {
+            const list = await listEmployeesActive();
+            setEmployees(list);
+          } catch {}
+        }
+      )
+      .subscribe();
+
+    return () => {
+      alive = false;
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const quickLogin = (e: Employee) => {
+    // Nur Session-Marker setzen (wer bin ich)
     setCurrentEmployee(e);
-    // navigate('/'); // dahin, wo du nach Login landen willst
-    window.location.href = '/'; // falls du kein Router-Hook nutzt
+
+    // Danach dahin, wohin du nach dem Login leitest (Dashboard/Home)
+    // Wenn du React Router nutzt, ersetze das ggf. durch navigate('/...').
+    window.location.href = '/';
   };
 
   return (
-    <div>
-      {/* Dein bestehendes UI bleibt – nur die Datenquelle für die Buttons ändert sich */}
-      {loading && <p>Lade Benutzer…</p>}
-      {error && <p style={{color:'red'}}>Fehler: {error}</p>}
+    <div className="max-w-xl mx-auto p-4">
+      {/* Überschrift / bestehendes Intro beibehalten */}
+      <h1 className="text-2xl font-semibold mb-4">Anmelden</h1>
 
-      {/* Buttons: statt statisch/LocalStorage jetzt aus employees */}
-      {!loading && !error && employees.map((e) => (
-        <button key={e.id} onClick={() => quickLogin(e)} className="your-existing-button-classes">
-          {e.role === 'admin' ? '👑 ' : '👤 '}{e.display_name}
-        </button>
-      ))}
+      {/* Dein bestehendes Formular (falls vorhanden) kann bleiben;
+          es wird nicht benötigt, solange wir passwortlos arbeiten. */}
 
-      {/* Belasse dein normales E-Mail/Passwort-Form – es wird schlicht nicht benötigt */}
+      <div className="mt-6">
+        <h2 className="text-lg font-medium mb-2">Schnell-Login</h2>
+
+        {loading && <p>Lade Benutzer…</p>}
+        {error && (
+          <p className="text-red-600">
+            Fehler beim Laden der Benutzer: {error}
+          </p>
+        )}
+
+        {!loading && !error && employees.length === 0 && (
+          <p>Keine aktiven Benutzer vorhanden.</p>
+        )}
+
+        {!loading && !error && employees.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {employees.map((e) => (
+              <button
+                key={e.id}
+                onClick={() => quickLogin(e)}
+                className="border rounded px-3 py-2 text-left hover:bg-gray-50"
+                title={`${e.email} • Rolle: ${e.role}`}
+              >
+                <div className="font-medium">
+                  {e.role === 'admin' ? '👑 ' : '👤 '}
+                  {e.display_name}
+                </div>
+                <div className="text-sm text-gray-600">{e.email}</div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
-  import { supabase } from '@/lib/supabase';
-
-useEffect(() => {
-  const channel = supabase
-    .channel('employees-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, async () => {
-      setEmployees(await listEmployeesActive());
-    })
-    .subscribe();
-  return () => { supabase.removeChannel(channel); };
-}, []);
-
 }
