@@ -6,9 +6,8 @@ export async function listEmployeesActive(): Promise<Employee[]> {
     .from('employees')
     .select('*')
     .eq('active', true)
-    .order('role', { ascending: false })       // Admins oben
+    .order('role', { ascending: false })
     .order('display_name', { ascending: true });
-
   if (error) throw error;
   return data ?? [];
 }
@@ -25,7 +24,6 @@ export async function createEmployee(input: {
     .insert({ ...input, active: input.active ?? true })
     .select()
     .single();
-
   if (error) throw error;
   return data as Employee;
 }
@@ -37,7 +35,6 @@ export async function updateEmployee(id: string, patch: Partial<Employee>) {
     .eq('id', id)
     .select()
     .single();
-
   if (error) throw error;
   return data as Employee;
 }

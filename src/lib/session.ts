@@ -1,6 +1,6 @@
 import type { Employee } from '@/types/employee';
 
-const LS_KEY = 'vs_current_employee'; // nur Session-Marker (keine Datenhaltung!)
+const LS_KEY = 'vs_current_employee'; // session marker only
 
 export function setCurrentEmployee(e: Employee) {
   localStorage.setItem(
