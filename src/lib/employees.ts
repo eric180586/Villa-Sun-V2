@@ -6,20 +6,28 @@ export async function listEmployeesActive(): Promise<Employee[]> {
     .from('employees')
     .select('*')
     .eq('active', true)
-    .order('role', { ascending: false })
+    .order('role', { ascending: false })       // Admins oben
     .order('display_name', { ascending: true });
+
   if (error) throw error;
   return data ?? [];
 }
 
-export async function createEmployee(input: Omit<Employee, 'id' | 'created_at' | 'active'> & { active?: boolean }) {
+export async function createEmployee(input: {
+  email: string;
+  display_name: string;
+  role: 'admin' | 'staff';
+  language?: string | null;
+  active?: boolean;
+}) {
   const { data, error } = await supabase
     .from('employees')
     .insert({ ...input, active: input.active ?? true })
     .select()
     .single();
+
   if (error) throw error;
-  return data;
+  return data as Employee;
 }
 
 export async function updateEmployee(id: string, patch: Partial<Employee>) {
@@ -29,12 +37,12 @@ export async function updateEmployee(id: string, patch: Partial<Employee>) {
     .eq('id', id)
     .select()
     .single();
+
   if (error) throw error;
-  return data;
+  return data as Employee;
 }
 
 export async function deleteEmployee(id: string) {
   const { error } = await supabase.from('employees').delete().eq('id', id);
   if (error) throw error;
 }
-
