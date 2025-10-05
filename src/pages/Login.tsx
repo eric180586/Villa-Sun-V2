@@ -52,4 +52,16 @@ export default function Login() {
       {/* Belasse dein normales E-Mail/Passwort-Form – es wird schlicht nicht benötigt */}
     </div>
   );
+  import { supabase } from '@/lib/supabase';
+
+useEffect(() => {
+  const channel = supabase
+    .channel('employees-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, async () => {
+      setEmployees(await listEmployeesActive());
+    })
+    .subscribe();
+  return () => { supabase.removeChannel(channel); };
+}, []);
+
 }
