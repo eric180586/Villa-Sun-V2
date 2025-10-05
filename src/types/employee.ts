@@ -7,4 +7,3 @@ export type Employee = {
   active: boolean;
   created_at: string;
 };
-
