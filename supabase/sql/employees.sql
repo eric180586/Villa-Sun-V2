@@ -1,6 +1,12 @@
 -- employees.sql — Supabase schema + seed for authless quick login
 create extension if not exists "pgcrypto";
 
+
+let { data, error } = await supabase.auth.signInWithPassword({
+  email: 'admin@villa-sun.world',
+  password: 'Admin123!'
+})
+
 create table if not exists public.employees (
   id uuid primary key default gen_random_uuid(),
   email text unique not null,
